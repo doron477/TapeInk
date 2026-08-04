@@ -29,6 +29,7 @@ DEFAULT_OUTPUT = Path.home() / "Documents" / "TapeInk"
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 ICON_PATH = ASSETS_DIR / "tapeink.ico"
 LOGO_PATH = ASSETS_DIR / "tapeink_256.png"
+LOGO_DARK_PATH = ASSETS_DIR / "tapeink_256_dark.png"
 
 AUDIO_PATTERNS = "*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.opus *.wma"
 VIDEO_PATTERNS = "*.mp4 *.mkv *.mov *.avi *.webm"
@@ -135,8 +136,12 @@ class TapeInkApp(ctk.CTk):
         try:
             from PIL import Image
 
-            img = Image.open(LOGO_PATH)
-            return ctk.CTkImage(light_image=img, dark_image=img, size=(52, 52))
+            light = Image.open(LOGO_PATH).convert("RGBA")
+            # Dark chrome needs a thin light rim so the blue square stays
+            # readable; light mode keeps the plain transparent mark.
+            dark_path = LOGO_DARK_PATH if LOGO_DARK_PATH.exists() else LOGO_PATH
+            dark = Image.open(dark_path).convert("RGBA")
+            return ctk.CTkImage(light_image=light, dark_image=dark, size=(52, 52))
         except Exception:
             return None
 
