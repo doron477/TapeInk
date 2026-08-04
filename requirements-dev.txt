@@ -1,0 +1,3 @@
+# Extra tools used only for development / generating test audio.
+# Install with: pip install -r requirements-dev.txt
+edge-tts>=7.0.0
