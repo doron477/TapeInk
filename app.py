@@ -364,16 +364,27 @@ class TapeInkApp(ctk.CTk):
         return box
 
     def _attach_info_tip(self, parent: ctk.CTkFrame, text: str) -> None:
-        """Small ⓘ that shows a floating Hebrew tip while the pointer is over it."""
-        badge = ctk.CTkLabel(
+        """Small info badge that shows a floating Hebrew tip on hover."""
+        badge = ctk.CTkFrame(
             parent,
-            text="ⓘ",
-            font=ctk.CTkFont(size=14),
-            text_color=("#4A90D9", "#7EB6FF"),
-            width=20,
+            width=22,
+            height=22,
+            corner_radius=11,
+            fg_color=("#dbeafe", "#1e3a5f"),
+            border_width=1,
+            border_color=("#4A90D9", "#6eb5ff"),
+        )
+        badge.pack(side="right", padx=(0, 8))
+        badge.pack_propagate(False)
+
+        label = ctk.CTkLabel(
+            badge,
+            text="i",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color=("#2563eb", "#93c5fd"),
             cursor="hand2",
         )
-        badge.pack(side="right", padx=(0, 6))
+        label.place(relx=0.5, rely=0.5, anchor="center")
 
         def show(_event: tk.Event | None = None) -> None:
             self._show_tip(badge, text)
@@ -381,7 +392,7 @@ class TapeInkApp(ctk.CTk):
         def hide(_event: tk.Event | None = None) -> None:
             self._hide_tip()
 
-        for widget in (badge, getattr(badge, "_label", None)):
+        for widget in (badge, label, getattr(label, "_label", None)):
             if widget is None:
                 continue
             widget.bind("<Enter>", show, add="+")
