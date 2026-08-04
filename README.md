@@ -26,7 +26,33 @@
 
 ---
 
-## התקנה על מחשב חדש
+## התקנה מהירה (מומלץ)
+
+**שני צעדים, בלי ידע טכני:**
+
+1. הורידו את הפרויקט: בדף ה־GitHub לחצו על **Code → Download ZIP**, ואז
+   לחצו ימני על הקובץ שהורד → **Extract All** (חילוץ).
+2. בתיקייה שנחלצה, לחצו לחיצה כפולה על **`Install-TapeInk.bat`**.
+
+זה הכול. סקריפט ההתקנה עושה את כל השאר לבד:
+
+- מתקין Python ו־ffmpeg אם הם חסרים
+- יוצר סביבת עבודה ומתקין את כל הספריות
+- מזהה כרטיס NVIDIA ומתקין תמיכת GPU רק אם צריך
+- מוריד את מודל התמלול
+- יוצר קיצור דרך **TapeInk** על שולחן העבודה
+
+ההתקנה לוקחת בין 5 ל־15 דקות, תלוי במהירות האינטרנט. בסיום פשוט לוחצים
+על האייקון שעל שולחן העבודה.
+
+> אם Windows מציג אזהרת SmartScreen: **More info → Run anyway**.
+> זה קורה לכל קובץ שהורד מהאינטרנט וללא חתימה דיגיטלית.
+
+---
+
+## התקנה ידנית (למתקדמים)
+
+מי שמעדיף לשלוט בכל שלב:
 
 ### שלב 1 — התקנת Python ו־ffmpeg
 
@@ -73,6 +99,9 @@ cd TapeInk
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+
+# רק אם יש כרטיס NVIDIA - להאצת התמלול
+pip install -r requirements-gpu.txt
 ```
 
 <div dir="rtl" align="right">
@@ -158,6 +187,8 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 | בעיה | פתרון |
 |------|--------|
+| אזהרת SmartScreen בהתקנה | **More info → Run anyway** |
+| ההתקנה נעצרה באמצע | הריצו שוב את `Install-TapeInk.bat` — הוא ממשיך מהמקום שבו עצר |
 | `python` לא מזוהה | סגרו ופתחו מחדש את PowerShell לאחר ההתקנה |
 | שגיאת `ffmpeg` | ודאו התקנה: `ffmpeg -version` |
 | האפליקציה לא נפתחת | בדקו את `tapeink_error.log`, או הריצו `TapeInk-debug.bat` לראות שגיאות |
@@ -190,6 +221,8 @@ python scripts\make_sample_audio.py   # יצירת קובץ בדיקה בעבר�
 | `tapeink/export.py` | ייצוא TXT / SRT / JSON |
 | `tapeink/textdir.py` | כיוון טקסט RTL / LTR |
 | `tapeink/pipeline.py` | חיבור כל השלבים |
+| `install.ps1` | לוגיקת ההתקנה האוטומטית |
+| `Install-TapeInk.bat` | הקובץ שלוחצים עליו כדי להתקין |
 
 ## הערה על Python
 

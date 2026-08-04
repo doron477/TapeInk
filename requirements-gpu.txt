@@ -1,0 +1,5 @@
+# CUDA runtime libraries for NVIDIA GPU acceleration.
+# Only needed on machines with an NVIDIA card; the app falls back to CPU without them.
+# Install with: pip install -r requirements-gpu.txt
+nvidia-cublas-cu12>=12.0
+nvidia-cudnn-cu12>=9.0
