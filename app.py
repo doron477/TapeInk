@@ -30,8 +30,12 @@ ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 ICON_PATH = ASSETS_DIR / "tapeink.ico"
 LOGO_PATH = ASSETS_DIR / "tapeink_256.png"
 
+AUDIO_PATTERNS = "*.wav *.mp3 *.m4a *.aac *.flac *.ogg *.opus *.wma"
+VIDEO_PATTERNS = "*.mp4 *.mkv *.mov *.avi *.webm"
 AUDIO_TYPES = [
-    ("Audio", "*.wav *.mp3 *.m4a *.flac *.ogg *.wma *.aac"),
+    ("אודיו ווידאו", f"{AUDIO_PATTERNS} {VIDEO_PATTERNS}"),
+    ("אודיו", AUDIO_PATTERNS),
+    ("וידאו", VIDEO_PATTERNS),
     ("All files", "*.*"),
 ]
 
