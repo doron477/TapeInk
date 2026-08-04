@@ -99,6 +99,7 @@ class TapeInkApp(ctk.CTk):
         self.device_text = tk.StringVar(value=device.label)
 
         self._logo_image: ctk.CTkImage | None = None
+        self._tip_window: tk.Toplevel | None = None
         self._build()
 
     # ---------- window chrome ----------
@@ -306,22 +307,45 @@ class TapeInkApp(ctk.CTk):
 
         # Right-hand box first, to keep the reading order.
         self.fillers_box = self._build_list_box(
-            parent, "מילות מילוי לניקוי (שורה לכל מילה)", DEFAULT_FILLERS, column=1, span=2
+            parent,
+            "מילות מילוי לניקוי (שורה לכל מילה)",
+            DEFAULT_FILLERS,
+            tip="מילים וצלילי היסוס שיוסרו מהתמלול.\nשורה לכל מילה.",
+            column=1,
+            span=2,
         )
         self.glossary_box = self._build_list_box(
-            parent, "מונחים ושמות (שורה לכל מונח)", DEFAULT_GLOSSARY, column=0, span=1
+            parent,
+            "מונחים ושמות (שורה לכל מונח)",
+            DEFAULT_GLOSSARY,
+            tip=(
+                "שמות ומונחים שהמודל נוטה לטעות בהם.\n"
+                "שורה לכל מונח — אנשים, חברות או מוצרים."
+            ),
+            column=0,
+            span=1,
         )
 
     def _build_list_box(
-        self, parent: ctk.CTkFrame, title: str, values: list[str], *, column: int, span: int
+        self,
+        parent: ctk.CTkFrame,
+        title: str,
+        values: list[str],
+        *,
+        tip: str,
+        column: int,
+        span: int,
     ) -> ctk.CTkTextbox:
+        heading = ctk.CTkFrame(parent, fg_color="transparent")
+        heading.grid(row=3, column=column, columnspan=span, sticky="e", padx=14, pady=(0, 4))
         ctk.CTkLabel(
-            parent,
+            heading,
             text=title,
             font=ctk.CTkFont(size=12),
             text_color=MUTED,
             anchor="e",
-        ).grid(row=3, column=column, columnspan=span, sticky="e", padx=14, pady=(0, 4))
+        ).pack(side="right")
+        self._attach_info_tip(heading, tip)
 
         box = ctk.CTkTextbox(parent, height=76, corner_radius=10, font=ctk.CTkFont(size=13))
         box.grid(row=4, column=column, columnspan=span, sticky="ew", padx=14, pady=(0, 14))
@@ -333,6 +357,68 @@ class TapeInkApp(ctk.CTk):
             pass
         self._keep_lines_intact(box)
         return box
+
+    def _attach_info_tip(self, parent: ctk.CTkFrame, text: str) -> None:
+        """Small ⓘ that shows a floating Hebrew tip while the pointer is over it."""
+        badge = ctk.CTkLabel(
+            parent,
+            text="ⓘ",
+            font=ctk.CTkFont(size=14),
+            text_color=("#4A90D9", "#7EB6FF"),
+            width=20,
+            cursor="hand2",
+        )
+        badge.pack(side="right", padx=(0, 6))
+
+        def show(_event: tk.Event | None = None) -> None:
+            self._show_tip(badge, text)
+
+        def hide(_event: tk.Event | None = None) -> None:
+            self._hide_tip()
+
+        for widget in (badge, getattr(badge, "_label", None)):
+            if widget is None:
+                continue
+            widget.bind("<Enter>", show, add="+")
+            widget.bind("<Leave>", hide, add="+")
+
+    def _show_tip(self, anchor: ctk.CTkBaseClass, text: str) -> None:
+        self._hide_tip()
+        tip = tk.Toplevel(self)
+        tip.wm_overrideredirect(True)
+        tip.attributes("-topmost", True)
+        frame = tk.Frame(tip, bg="#1f1f1f", highlightbackground="#555555", highlightthickness=1)
+        frame.pack()
+        label = tk.Label(
+            frame,
+            text=text,
+            justify="right",
+            anchor="e",
+            wraplength=320,
+            bg="#1f1f1f",
+            fg="#f2f2f2",
+            font=("Segoe UI", 10),
+            padx=12,
+            pady=9,
+        )
+        label.pack()
+        tip.update_idletasks()
+        width = tip.winfo_reqwidth()
+        x = max(8, anchor.winfo_rootx() + anchor.winfo_width() - width)
+        y = anchor.winfo_rooty() + anchor.winfo_height() + 6
+        tip.geometry(f"+{x}+{y}")
+        # Keep the tip up while the pointer moves onto it.
+        tip.bind("<Enter>", lambda _e: None)
+        tip.bind("<Leave>", lambda _e: self._hide_tip())
+        self._tip_window = tip
+
+    def _hide_tip(self) -> None:
+        if self._tip_window is not None:
+            try:
+                self._tip_window.destroy()
+            except tk.TclError:
+                pass
+            self._tip_window = None
 
     def _keep_lines_intact(self, box: ctk.CTkTextbox) -> None:
         """Keep each line of an editable box in one piece.
