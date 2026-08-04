@@ -55,13 +55,19 @@ def segments_to_display(
     include_timestamps: bool = True,
     include_speakers: bool = True,
 ) -> str:
-    """Screen-friendly transcript.
+    """Screen-friendly transcript that opens each segment with its timestamp.
 
-    Tk applies BiDi but mirrors brackets and misplaces digit runs, so in RTL the
-    timestamp goes at the end of the line and brackets are dropped. Exported
-    files keep the canonical bracketed format.
+    The timestamp gets a header line of its own because a long segment wraps,
+    and an inline timestamp would drift onto the last wrapped row instead of
+    staying where the segment begins.
+
+    Tk has no paragraph base direction: it reorders characters within a run but
+    always lays the runs themselves out left to right. On a right-to-left line
+    the run written last is therefore the one drawn at the right edge, where a
+    Hebrew reader starts. Hence the header is built speaker-then-stamp for RTL,
+    so that it reads stamp-then-speaker on screen. Exported files are unaffected.
     """
-    lines: list[str] = []
+    blocks: list[str] = []
     for seg in segments:
         text = seg.get("text", "").strip()
         if not text:
@@ -72,15 +78,13 @@ def segments_to_display(
         if include_timestamps:
             start = format_timestamp(float(seg.get("start", 0.0)))
             end = format_timestamp(float(seg.get("end", 0.0)))
-            stamp = f"{start}–{end}" if rtl else f"[{start} → {end}]"
+            stamp = f"{start}–{end}" if rtl else f"{start} → {end}"
 
-        if rtl:
-            parts = [f"{speaker}:" if speaker else "", text, stamp]
-        else:
-            parts = [stamp, f"{speaker}:" if speaker else "", text]
-        lines.append(" ".join(p for p in parts if p))
+        header_parts = [speaker, stamp] if rtl else [stamp, speaker]
+        header = " · ".join(p for p in header_parts if p)
+        blocks.append(f"{header}\n{text}" if header else text)
 
-    return "\n".join(lines).strip() + ("\n" if lines else "")
+    return "\n\n".join(blocks) + ("\n" if blocks else "")
 
 
 def segments_to_srt(

@@ -10,6 +10,9 @@ from tapeink.device import DeviceInfo, detect_device
 
 ProgressCallback = Callable[[str], None]
 
+# Names Whisper tends to mangle unless it is told they exist.
+DEFAULT_GLOSSARY = ["טייפאינק"]
+
 
 @dataclass
 class TranscriptResult:
@@ -36,11 +39,18 @@ def _get_model(model_size: str, device: DeviceInfo):
     return _model_cache[key]
 
 
+def build_prompt(glossary: list[str] | None) -> str:
+    """Turn a glossary into a hint string Whisper can be biased with."""
+    terms = [t.strip() for t in (glossary or []) if t.strip()]
+    return ", ".join(dict.fromkeys(terms))
+
+
 def _collect_segments(
     model: Any,
     path: Path,
     *,
     language: str,
+    prompt: str,
     on_progress: ProgressCallback | None,
 ) -> tuple[list[dict[str, Any]], Any]:
     segments_iter, info = model.transcribe(
@@ -49,6 +59,10 @@ def _collect_segments(
         word_timestamps=True,
         vad_filter=True,
         beam_size=5,
+        # hotwords bias every window; initial_prompt covers the first one, which
+        # has no preceding text to lean on and is where names get mangled most.
+        hotwords=prompt or None,
+        initial_prompt=prompt or None,
     )
 
     segments: list[dict[str, Any]] = []
@@ -85,6 +99,7 @@ def transcribe_file(
     language: str = "he",
     prefer_cuda: bool = True,
     device: DeviceInfo | None = None,
+    glossary: list[str] | None = None,
     on_progress: ProgressCallback | None = None,
 ) -> TranscriptResult:
     """Transcribe an audio file to timestamped segments."""
@@ -97,13 +112,14 @@ def transcribe_file(
         on_progress(f"טוען מודל ({model_size}) על {device_info.label}…")
 
     model = _get_model(model_size, device_info)
+    prompt = build_prompt(glossary)
 
     if on_progress:
         on_progress("מתמלל…")
 
     try:
         segments, info = _collect_segments(
-            model, path, language=language, on_progress=on_progress
+            model, path, language=language, prompt=prompt, on_progress=on_progress
         )
     except RuntimeError as exc:
         # Common on Windows: GPU driver present but CUDA runtime DLLs missing.
@@ -116,7 +132,7 @@ def transcribe_file(
             device_info = detect_device(prefer_cuda=False)
             model = _get_model(model_size, device_info)
             segments, info = _collect_segments(
-                model, path, language=language, on_progress=on_progress
+                model, path, language=language, prompt=prompt, on_progress=on_progress
             )
         else:
             raise

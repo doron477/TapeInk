@@ -10,7 +10,7 @@ from tapeink.cleanup import DEFAULT_FILLERS, clean_text
 from tapeink.device import DeviceInfo, detect_device
 from tapeink.diarize import assign_speakers
 from tapeink.export import save_exports, segments_to_plain
-from tapeink.transcribe import TranscriptResult, transcribe_file
+from tapeink.transcribe import DEFAULT_GLOSSARY, TranscriptResult, transcribe_file
 
 ProgressCallback = Callable[[str], None]
 
@@ -24,6 +24,7 @@ class PipelineOptions:
     num_speakers: int | None = None
     clean_fillers: bool = True
     fillers: list[str] = field(default_factory=lambda: list(DEFAULT_FILLERS))
+    glossary: list[str] = field(default_factory=lambda: list(DEFAULT_GLOSSARY))
     include_timestamps: bool = True
     include_speakers: bool = True
     export_formats: tuple[str, ...] = ("txt", "srt", "json")
@@ -55,6 +56,7 @@ def run_pipeline(
         language=opts.language,
         prefer_cuda=opts.prefer_cuda,
         device=device,
+        glossary=opts.glossary,
         on_progress=on_progress,
     )
 

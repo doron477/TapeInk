@@ -16,6 +16,7 @@ from tapeink.cleanup import DEFAULT_FILLERS
 from tapeink.device import detect_device
 from tapeink.export import segments_to_display
 from tapeink.pipeline import PipelineOptions, run_pipeline
+from tapeink.transcribe import DEFAULT_GLOSSARY
 from tapeink import textdir
 
 APP_TITLE = "TapeInk"
@@ -287,27 +288,39 @@ class TapeInkApp(ctk.CTk):
             ("העדף GPU", self.prefer_cuda),
             ("הפרדת דוברים", self.do_diarize),
             ("ניקוי מילות מילוי", self.clean_fillers),
-            ("חותמות זמן", self.include_timestamps),
         ):
             ctk.CTkCheckBox(
                 toggles, text=text, variable=var, checkbox_width=20, checkbox_height=20
             ).pack(side="right", padx=(18, 0))
 
+        # Right-hand box first, to keep the reading order.
+        self.fillers_box = self._build_list_box(
+            parent, "מילות מילוי לניקוי (שורה לכל מילה)", DEFAULT_FILLERS, column=1, span=2
+        )
+        self.glossary_box = self._build_list_box(
+            parent, "מונחים ושמות (שורה לכל מונח)", DEFAULT_GLOSSARY, column=0, span=1
+        )
+
+    def _build_list_box(
+        self, parent: ctk.CTkFrame, title: str, values: list[str], *, column: int, span: int
+    ) -> ctk.CTkTextbox:
         ctk.CTkLabel(
             parent,
-            text="מילות מילוי לניקוי (שורה לכל מילה)",
+            text=title,
             font=ctk.CTkFont(size=12),
             text_color=MUTED,
             anchor="e",
-        ).grid(row=3, column=0, columnspan=3, sticky="e", padx=14, pady=(0, 4))
-        self.fillers_box = ctk.CTkTextbox(parent, height=76, corner_radius=10, font=ctk.CTkFont(size=13))
-        self.fillers_box.grid(row=4, column=0, columnspan=3, sticky="ew", padx=14, pady=(0, 14))
-        self.fillers_box.insert("1.0", "\n".join(DEFAULT_FILLERS))
+        ).grid(row=3, column=column, columnspan=span, sticky="e", padx=14, pady=(0, 4))
+
+        box = ctk.CTkTextbox(parent, height=76, corner_radius=10, font=ctk.CTkFont(size=13))
+        box.grid(row=4, column=column, columnspan=span, sticky="ew", padx=14, pady=(0, 14))
+        box.insert("1.0", "\n".join(values))
         try:
-            self.fillers_box.tag_config("rtl", justify="right")
-            self.fillers_box.tag_add("rtl", "1.0", "end")
+            box.tag_config("rtl", justify="right")
+            box.tag_add("rtl", "1.0", "end")
         except Exception:
             pass
+        return box
 
     def _build_results(self) -> None:
         card = ctk.CTkFrame(self, fg_color=CARD, corner_radius=16)
@@ -346,13 +359,24 @@ class TapeInkApp(ctk.CTk):
             tools,
             values=list(DIRECTION_LABELS),
             variable=self.direction_label,
-            command=self._on_direction_change,
+            command=self._on_display_change,
             height=30,
             font=ctk.CTkFont(size=12),
         ).pack(side="left", padx=(0, 8))
         ctk.CTkLabel(tools, text="כיוון טקסט", font=ctk.CTkFont(size=12), text_color=MUTED).pack(
-            side="left"
+            side="left", padx=(0, 18)
         )
+        ctk.CTkSwitch(
+            tools,
+            text="חותמות זמן",
+            variable=self.include_timestamps,
+            onvalue=True,
+            offvalue=False,
+            command=self._on_display_change,
+            font=ctk.CTkFont(size=12),
+            switch_width=38,
+            switch_height=18,
+        ).pack(side="left")
 
         self.output_box = ctk.CTkTextbox(
             card,
@@ -392,7 +416,8 @@ class TapeInkApp(ctk.CTk):
             self.mode.set("simple")
             self.pro_card.grid_forget()
 
-    def _on_direction_change(self, _value: str | None = None) -> None:
+    def _on_display_change(self, _value: str | None = None) -> None:
+        """Re-render the transcript after a direction or timestamp change."""
         if self._last_text:
             self._render_transcript()
         else:
@@ -470,11 +495,17 @@ class TapeInkApp(ctk.CTk):
         except ValueError:
             return None
 
-    def _fillers_list(self) -> list[str]:
+    def _box_lines(self, box: ctk.CTkTextbox, fallback: list[str]) -> list[str]:
         if self.mode.get() != "pro":
-            return list(DEFAULT_FILLERS)
-        lines = self.fillers_box.get("1.0", "end").splitlines()
+            return list(fallback)
+        lines = box.get("1.0", "end").splitlines()
         return [line.strip() for line in lines if line.strip()]
+
+    def _fillers_list(self) -> list[str]:
+        return self._box_lines(self.fillers_box, DEFAULT_FILLERS)
+
+    def _glossary_list(self) -> list[str]:
+        return self._box_lines(self.glossary_box, DEFAULT_GLOSSARY)
 
     # ---------- pipeline ----------
 
@@ -503,7 +534,8 @@ class TapeInkApp(ctk.CTk):
             num_speakers=None if simple else self._parse_speakers(),
             clean_fillers=True if simple else self.clean_fillers.get(),
             fillers=self._fillers_list(),
-            include_timestamps=True if simple else self.include_timestamps.get(),
+            glossary=self._glossary_list(),
+            include_timestamps=self.include_timestamps.get(),
             include_speakers=True,
         )
 
