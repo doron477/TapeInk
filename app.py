@@ -331,7 +331,23 @@ class TapeInkApp(ctk.CTk):
             box.tag_add("rtl", "1.0", "end")
         except Exception:
             pass
+        self._snap_caret_to_line_end(box)
         return box
+
+    def _snap_caret_to_line_end(self, box: ctk.CTkTextbox) -> None:
+        """Send clicks to the end of the clicked line, keeping the line intact.
+
+        Tk lays a display line out in chunks and orders the chunks left to
+        right, and the insertion cursor starts a chunk of its own. A caret
+        dropped inside a Hebrew line therefore cuts it in two and swaps the
+        halves on screen. At the end of the line there is nothing to cut off,
+        so the line renders in one piece and typing still works.
+        """
+
+        def snap(_event: tk.Event) -> None:
+            box.after_idle(lambda: box.mark_set("insert", "insert lineend"))
+
+        box.bind("<Button-1>", snap)
 
     def _build_results(self) -> None:
         card = ctk.CTkFrame(self, fg_color=CARD, corner_radius=16)
@@ -397,7 +413,24 @@ class TapeInkApp(ctk.CTk):
             font=ctk.CTkFont(size=15),
         )
         self.output_box.grid(row=1, column=0, sticky="nsew", padx=18, pady=(4, 18))
+        self._lock_transcript_view()
         self._render_placeholder()
+
+    def _lock_transcript_view(self) -> None:
+        """Keep the caret and partial selections out of the transcript.
+
+        Both split a display line the way described in _snap_caret_to_line_end,
+        and the transcript is output only, so the mouse has no reason to place a
+        caret in it. Copying is available through the copy button, and the wheel
+        and scrollbar keep working since they use other bindings.
+        """
+        for sequence in (
+            "<Button-1>",
+            "<B1-Motion>",
+            "<Double-Button-1>",
+            "<Triple-Button-1>",
+        ):
+            self.output_box.bind(sequence, lambda _event: "break")
 
     def _build_statusbar(self) -> None:
         bar = ctk.CTkFrame(self, fg_color="transparent")
@@ -482,9 +515,15 @@ class TapeInkApp(ctk.CTk):
         else:
             body = self._last_text
 
+        self._write_output(body, direction)
+
+    def _write_output(self, body: str, direction: str) -> None:
+        """Replace the transcript, leaving the box read-only afterwards."""
+        self.output_box.configure(state="normal")
         self.output_box.delete("1.0", "end")
         self.output_box.insert("1.0", body)
         self._apply_justify(direction)
+        self.output_box.configure(state="disabled")
 
     def _apply_justify(self, direction: str) -> None:
         try:
@@ -495,9 +534,7 @@ class TapeInkApp(ctk.CTk):
 
     def _render_placeholder(self) -> None:
         self._last_text = ""
-        self.output_box.delete("1.0", "end")
-        self.output_box.insert("1.0", "התמלול יופיע כאן…")
-        self._apply_justify(textdir.RTL)
+        self._write_output("התמלול יופיע כאן…", textdir.RTL)
 
     def _pick_audio(self) -> None:
         path = filedialog.askopenfilename(title="בחר קובץ אודיו", filetypes=AUDIO_TYPES)
@@ -587,7 +624,7 @@ class TapeInkApp(ctk.CTk):
         self.status.set("מתחיל…")
         self._last_text = ""
         self._last_segments = []
-        self.output_box.delete("1.0", "end")
+        self._write_output("", textdir.RTL)
 
         threading.Thread(target=self._worker, args=(audio, out, options), daemon=True).start()
 
@@ -642,9 +679,7 @@ class TapeInkApp(ctk.CTk):
             self.status_dot.configure(text_color="#E53935")
             self._last_text = ""
             self._last_segments = []
-            self.output_box.delete("1.0", "end")
-            self.output_box.insert("1.0", f"שגיאה: {text}")
-            self._apply_justify(textdir.RTL)
+            self._write_output(f"שגיאה: {text}", textdir.RTL)
             messagebox.showerror(APP_TITLE, text)
 
 
