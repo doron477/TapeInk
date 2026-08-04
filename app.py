@@ -331,23 +331,54 @@ class TapeInkApp(ctk.CTk):
             box.tag_add("rtl", "1.0", "end")
         except Exception:
             pass
-        self._snap_caret_to_line_end(box)
+        self._keep_lines_intact(box)
         return box
 
-    def _snap_caret_to_line_end(self, box: ctk.CTkTextbox) -> None:
-        """Send clicks to the end of the clicked line, keeping the line intact.
+    def _keep_lines_intact(self, box: ctk.CTkTextbox) -> None:
+        """Keep each line of an editable box in one piece.
 
-        Tk lays a display line out in chunks and orders the chunks left to
-        right, and the insertion cursor starts a chunk of its own. A caret
-        dropped inside a Hebrew line therefore cuts it in two and swaps the
-        halves on screen. At the end of the line there is nothing to cut off,
-        so the line renders in one piece and typing still works.
+        Tk stores a line as a run of pieces and hands each piece to Windows on
+        its own, laying the pieces out left to right. A Hebrew line only reads
+        correctly while it is a single piece: a caret or a selection edge inside
+        it splits it in two and the halves swap places on screen. Word and
+        line-drag selections are therefore dropped, and after every click and
+        keystroke the caret is pushed to the end of its line. Whatever still
+        slips through - a keyboard selection, say - is repaired by rewriting the
+        split line, which merges it back into one piece.
+
+        Select-all and the copy button are unaffected, since a selection that
+        starts and ends on a line boundary splits nothing.
         """
 
-        def snap(_event: tk.Event) -> None:
-            box.after_idle(lambda: box.mark_set("insert", "insert lineend"))
+        inner = box._textbox
 
-        box.bind("<Button-1>", snap)
+        def split_lines() -> list[int]:
+            total = int(box.index("end-1c").split(".")[0])
+            split = []
+            for line in range(1, total + 1):
+                pieces = inner.dump(f"{line}.0", f"{line}.end", text=True)
+                if len(pieces) > 1:
+                    split.append(line)
+            return split
+
+        def settle() -> None:
+            box.mark_set("insert", "insert lineend")
+            for line in split_lines():
+                text = box.get(f"{line}.0", f"{line}.end")
+                caret_here = box.index("insert").startswith(f"{line}.")
+                box.delete(f"{line}.0", f"{line}.end")
+                box.insert(f"{line}.0", text)
+                box.tag_add("rtl", f"{line}.0", f"{line}.end")
+                if caret_here:
+                    box.mark_set("insert", f"{line}.end")
+
+        def schedule(_event: tk.Event) -> None:
+            box.after_idle(settle)
+
+        for sequence in ("<Button-1>", "<ButtonRelease-1>", "<KeyRelease>"):
+            box.bind(sequence, schedule)
+        for sequence in ("<B1-Motion>", "<Double-Button-1>", "<Triple-Button-1>"):
+            box.bind(sequence, lambda _event: "break")
 
     def _build_results(self) -> None:
         card = ctk.CTkFrame(self, fg_color=CARD, corner_radius=16)
