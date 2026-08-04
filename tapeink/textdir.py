@@ -3,6 +3,10 @@
 Tk on Windows already applies the Unicode BiDi algorithm when drawing text, so
 strings must be passed through unchanged. Direction is used only to decide
 alignment (right for Hebrew, left for English).
+
+This only holds while the widget font covers Hebrew itself. With a font that
+does not, Tk substitutes a fallback per word and orders those words left to
+right, which looks like reversed word order. See HEBREW_FONTS in app.py.
 """
 
 from __future__ import annotations

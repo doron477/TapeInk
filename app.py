@@ -8,7 +8,7 @@ import sys
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, font as tkfont, messagebox
 
 import customtkinter as ctk
 
@@ -35,6 +35,12 @@ CARD_INNER = ("gray86", "gray22")
 MUTED = ("gray38", "gray62")
 ACCENT = "#F0A431"
 ACCENT_HOVER = "#D98E1F"
+GHOST_TEXT = ("gray20", "gray90")
+GHOST_BORDER = ("gray68", "gray45")
+GHOST_HOVER = ("gray82", "gray28")
+
+# Families that actually ship Hebrew glyphs, best first.
+HEBREW_FONTS = ("Segoe UI", "Arial", "Tahoma", "David")
 
 DIRECTION_LABELS = {
     "אוטומטי": textdir.AUTO,
@@ -53,6 +59,7 @@ class TapeInkApp(ctk.CTk):
         super().__init__()
         ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("blue")
+        self._apply_hebrew_font()
 
         self.title(APP_TITLE)
         self.geometry("1080x860")
@@ -86,6 +93,21 @@ class TapeInkApp(ctk.CTk):
         self._build()
 
     # ---------- window chrome ----------
+
+    def _apply_hebrew_font(self) -> None:
+        """Pick a font family that covers Hebrew, for every widget in the app.
+
+        CustomTkinter defaults to Roboto, which has no Hebrew glyphs. Tk then
+        substitutes a fallback font word by word and lays those runs out left to
+        right, so a Hebrew sentence shows up with its words in reverse order.
+        One family covering the whole line keeps it a single run, and Tk applies
+        BiDi to it correctly.
+        """
+        available = set(tkfont.families(self))
+        for family in HEBREW_FONTS:
+            if family in available:
+                ctk.ThemeManager.theme["CTkFont"]["family"] = family
+                return
 
     def _apply_icon(self) -> None:
         if not ICON_PATH.exists():
@@ -312,6 +334,9 @@ class TapeInkApp(ctk.CTk):
             corner_radius=8,
             fg_color="transparent",
             border_width=1,
+            border_color=GHOST_BORDER,
+            text_color=GHOST_TEXT,
+            hover_color=GHOST_HOVER,
             command=self._open_output,
         ).pack(side="left", padx=(0, 8))
         ctk.CTkButton(
