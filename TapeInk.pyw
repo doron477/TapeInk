@@ -12,6 +12,14 @@ LOG_FILE = ROOT / "tapeink_error.log"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+if sys.platform == "win32":
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("doron477.TapeInk.1")
+    except Exception:
+        pass
+
 
 def main() -> None:
     try:

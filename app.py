@@ -18,6 +18,7 @@ from tapeink.export import segments_to_display
 from tapeink.pipeline import PipelineOptions, run_pipeline
 from tapeink.transcribe import DEFAULT_GLOSSARY
 from tapeink import textdir
+from tapeink.win_icon import apply_window_icon, set_process_app_id
 
 APP_TITLE = "TapeInk"
 APP_SUBTITLE = "תמלול אודיו בעברית · הפרדת דוברים · חותמות זמן · ניקוי מילוי"
@@ -121,14 +122,7 @@ class TapeInkApp(ctk.CTk):
                 return
 
     def _apply_icon(self) -> None:
-        if not ICON_PATH.exists():
-            return
-        for attempt in (lambda: self.iconbitmap(default=str(ICON_PATH)), lambda: self.iconbitmap(str(ICON_PATH))):
-            try:
-                attempt()
-                return
-            except Exception:
-                continue
+        apply_window_icon(self, ICON_PATH)
 
     def _load_logo(self) -> ctk.CTkImage | None:
         if not LOGO_PATH.exists():
@@ -823,6 +817,7 @@ class TapeInkApp(ctk.CTk):
 
 
 def main() -> None:
+    set_process_app_id()
     app = TapeInkApp()
     app.mainloop()
 
