@@ -375,8 +375,14 @@ class TapeInkApp(ctk.CTk):
         def schedule(_event: tk.Event) -> None:
             box.after_idle(settle)
 
-        for sequence in ("<Button-1>", "<ButtonRelease-1>", "<KeyRelease>"):
-            box.bind(sequence, schedule)
+        for sequence in (
+            "<Button-1>",
+            "<ButtonRelease-1>",
+            "<KeyRelease>",
+            "<FocusIn>",
+            "<FocusOut>",
+        ):
+            box.bind(sequence, schedule, add="+")
         for sequence in ("<B1-Motion>", "<Double-Button-1>", "<Triple-Button-1>"):
             box.bind(sequence, lambda _event: "break")
 
@@ -450,8 +456,8 @@ class TapeInkApp(ctk.CTk):
     def _lock_transcript_view(self) -> None:
         """Keep the caret and partial selections out of the transcript.
 
-        Both split a display line the way described in _snap_caret_to_line_end,
-        and the transcript is output only, so the mouse has no reason to place a
+        Both split a display line the way described in _keep_lines_intact, and
+        the transcript is output only, so the mouse has no reason to place a
         caret in it. Copying is available through the copy button, and the wheel
         and scrollbar keep working since they use other bindings.
         """
@@ -461,7 +467,7 @@ class TapeInkApp(ctk.CTk):
             "<Double-Button-1>",
             "<Triple-Button-1>",
         ):
-            self.output_box.bind(sequence, lambda _event: "break")
+            self.output_box.bind(sequence, lambda _event: "break", add="+")
 
     def _build_statusbar(self) -> None:
         bar = ctk.CTkFrame(self, fg_color="transparent")
