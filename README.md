@@ -243,4 +243,8 @@ Python נדרש כדי **להריץ מהקוד**. בהמשך אפשר לארוז
 [librosa](https://librosa.org/), [scikit-learn](https://scikit-learn.org/)
 ו־[ffmpeg](https://ffmpeg.org/).
 
+---
+
+© [@doron477](https://github.com/doron477) · כל הזכויות שמורות
+
 </div>

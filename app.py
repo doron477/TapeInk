@@ -21,6 +21,10 @@ from tapeink import textdir
 
 APP_TITLE = "TapeInk"
 APP_SUBTITLE = "תמלול אודיו בעברית · הפרדת דוברים · חותמות זמן · ניקוי מילוי"
+AUTHOR_HANDLE = "@doron477"
+# Written handle-first so Tk's left-to-right run order lands the Hebrew on the
+# right, where a Hebrew reader starts the line.
+CREDIT = f"© {AUTHOR_HANDLE} · כל הזכויות שמורות"
 DEFAULT_OUTPUT = Path.home() / "Documents" / "TapeInk"
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 ICON_PATH = ASSETS_DIR / "tapeink.ico"
@@ -63,8 +67,8 @@ class TapeInkApp(ctk.CTk):
         self._apply_hebrew_font()
 
         self.title(APP_TITLE)
-        self.geometry("1080x860")
-        self.minsize(960, 760)
+        self.geometry("1080x940")
+        self.minsize(940, 640)
         self.configure(fg_color=("gray96", "gray12"))
         self._apply_icon()
 
@@ -135,12 +139,15 @@ class TapeInkApp(ctk.CTk):
 
     def _build(self) -> None:
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1, minsize=280)
+        # Keep the transcript able to shrink, so the status bar and the credit
+        # line stay on screen in pro mode on shorter displays.
+        self.grid_rowconfigure(2, weight=1, minsize=180)
 
         self._build_header()
         self._build_controls()
         self._build_results()
         self._build_statusbar()
+        self._build_footer()
         self._on_mode_change("פשוט")
 
     def _build_header(self) -> None:
@@ -382,7 +389,7 @@ class TapeInkApp(ctk.CTk):
             card,
             wrap="word",
             corner_radius=12,
-            height=240,
+            height=200,
             font=ctk.CTkFont(size=15),
         )
         self.output_box.grid(row=1, column=0, sticky="nsew", padx=18, pady=(4, 18))
@@ -390,7 +397,7 @@ class TapeInkApp(ctk.CTk):
 
     def _build_statusbar(self) -> None:
         bar = ctk.CTkFrame(self, fg_color="transparent")
-        bar.grid(row=3, column=0, sticky="ew", padx=24, pady=(0, 18))
+        bar.grid(row=3, column=0, sticky="ew", padx=24, pady=(0, 10))
         bar.grid_columnconfigure(1, weight=1)
 
         self.status_dot = ctk.CTkLabel(bar, text="●", text_color=MUTED, font=ctk.CTkFont(size=14))
@@ -402,6 +409,18 @@ class TapeInkApp(ctk.CTk):
         self.progress.grid(row=0, column=2, sticky="e")
         self.progress.set(0)
 
+    def _build_footer(self) -> None:
+        footer = ctk.CTkFrame(self, fg_color="transparent")
+        footer.grid(row=4, column=0, sticky="ew", padx=24, pady=(0, 12))
+        footer.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkFrame(footer, height=1, fg_color=CARD_INNER).grid(
+            row=0, column=0, sticky="ew", pady=(0, 8)
+        )
+        ctk.CTkLabel(
+            footer, text=CREDIT, font=ctk.CTkFont(size=11), text_color=MUTED
+        ).grid(row=1, column=0)
+
     # ---------- interactions ----------
 
     def _toggle_theme(self) -> None:
@@ -412,9 +431,26 @@ class TapeInkApp(ctk.CTk):
         if value == "מקצועי":
             self.mode.set("pro")
             self.pro_card.grid(row=2, column=0, sticky="ew", padx=18, pady=(8, 4))
+            self._grow_to_fit()
         else:
             self.mode.set("simple")
             self.pro_card.grid_forget()
+
+    def _grow_to_fit(self) -> None:
+        """Give the pro panel room, so the status bar and credit stay on screen.
+
+        Only the height is touched, and it is read from the requested geometry
+        rather than winfo_width/height, which still report stale values when the
+        mode is switched before the window manager has applied a resize.
+        """
+        self.update_idletasks()
+        wanted = min(self.winfo_reqheight(), self.winfo_screenheight() - 80)
+
+        size, _, position = self.wm_geometry().partition("+")
+        width, _, height = size.partition("x")
+        if height.isdigit() and int(height) >= wanted:
+            return
+        self.geometry(f"{width}x{wanted}" + (f"+{position}" if position else ""))
 
     def _on_display_change(self, _value: str | None = None) -> None:
         """Re-render the transcript after a direction or timestamp change."""
